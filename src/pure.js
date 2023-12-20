@@ -3,7 +3,7 @@ import {
   getQueriesForElement,
   prettyDOM
 } from '@testing-library/dom'
-import { tick } from 'svelte'
+import { tick, createRoot } from 'svelte'
 
 const containerCache = new Set()
 const componentCache = new Set()
@@ -54,17 +54,14 @@ const render = (
     return { props: options }
   }
 
-  let component = new ComponentConstructor({
+  let component = createRoot(ComponentConstructor, {
     target,
-    ...checkProps(options)
+    ...checkProps(options),
+    ondestroy: () => componentCache.delete(component)
   })
 
   containerCache.add({ container, target, component })
   componentCache.add(component)
-
-  component.$$.on_destroy.push(() => {
-    componentCache.delete(component)
-  })
 
   return {
     container,
@@ -74,17 +71,14 @@ const render = (
       if (componentCache.has(component)) component.$destroy()
 
       // eslint-disable-next-line no-new
-      component = new ComponentConstructor({
+      component = createRoot(ComponentConstructor, {
         target,
-        ...checkProps(options)
+        ...checkProps(options),
+        ondestroy: () => componentCache.delete(component)
       })
 
       containerCache.add({ container, target, component })
       componentCache.add(component)
-
-      component.$$.on_destroy.push(() => {
-        componentCache.delete(component)
-      })
     },
     unmount: () => {
       if (componentCache.has(component)) component.$destroy()
